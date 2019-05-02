@@ -67,895 +67,6 @@ Based on these findings a few recommendations I would provide to solidifying the
 
 4) Your odds of winning a game reflect the above items, plus having teammates that are comfortable with playing their selected champion
 
-# Acquiring and scrubbing the data
-
-
-```python
-# First thing I always to is load in the necessary libraries for data summarizing, cleaning, and exploratory analysis
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-%matplotlib inline
-import warnings
-warnings.filterwarnings("ignore")
-```
-
-
-```python
-#The below csv files come from Riot's API
-champs = pd.read_csv('desktop/league of legends data/champs.csv') #Gives us the ID's of every champion in the game
-matches = pd.read_csv('desktop/league of legends data/matches.csv') #Gives the basic information for identifying individual matches
-participants = pd.read_csv('desktop/league of legends data/participants.csv') #Gives us what champions were selected for each team and role
-stats1 = pd.read_csv('desktop/league of legends data/stats1.csv') #Provides game stats for the blue team
-stats2 = pd.read_csv('desktop/league of legends data/stats2.csv') #Provides game stats for the red team
-teamstats = pd.read_csv('desktop/league of legends data/teamstats.csv') #Provides overall game stats
-df_6 = pd.read_csv('desktop/lol_data/data/data.csv') #saved champion matchup analysis
-```
-
-
-```python
-#Combining our dataframes into one, based on each matches ID
-stats = stats1.append(stats2)
-raw_df = pd.merge(participants, stats, how = 'left', on = ['id'], suffixes=('', '_y'))
-raw_df = pd.merge(raw_df, champs, how = 'left', left_on = 'championid', right_on = 'id', suffixes=('','_y'))
-raw_df = pd.merge(raw_df, matches, how = 'left', left_on = 'matchid', right_on = 'id', suffixes=('', '_y'))
-```
-
-
-```python
-print(raw_df.shape) #over 180,000 games
-raw_df.head()
-```
-
-    (1834520, 73)
-    
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id</th>
-      <th>matchid</th>
-      <th>player</th>
-      <th>championid</th>
-      <th>ss1</th>
-      <th>ss2</th>
-      <th>role</th>
-      <th>position</th>
-      <th>win</th>
-      <th>item1</th>
-      <th>...</th>
-      <th>name</th>
-      <th>id_y</th>
-      <th>id_y</th>
-      <th>gameid</th>
-      <th>platformid</th>
-      <th>queueid</th>
-      <th>seasonid</th>
-      <th>duration</th>
-      <th>creation</th>
-      <th>version</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>9</td>
-      <td>10</td>
-      <td>1</td>
-      <td>19</td>
-      <td>4</td>
-      <td>11</td>
-      <td>NONE</td>
-      <td>JUNGLE</td>
-      <td>0.0</td>
-      <td>3748.0</td>
-      <td>...</td>
-      <td>Warwick</td>
-      <td>19</td>
-      <td>10</td>
-      <td>3187427022</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1909</td>
-      <td>1495068946860</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>10</td>
-      <td>10</td>
-      <td>2</td>
-      <td>267</td>
-      <td>3</td>
-      <td>4</td>
-      <td>DUO_SUPPORT</td>
-      <td>BOT</td>
-      <td>0.0</td>
-      <td>2301.0</td>
-      <td>...</td>
-      <td>Nami</td>
-      <td>267</td>
-      <td>10</td>
-      <td>3187427022</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1909</td>
-      <td>1495068946860</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>11</td>
-      <td>10</td>
-      <td>3</td>
-      <td>119</td>
-      <td>7</td>
-      <td>4</td>
-      <td>DUO_CARRY</td>
-      <td>BOT</td>
-      <td>0.0</td>
-      <td>1055.0</td>
-      <td>...</td>
-      <td>Draven</td>
-      <td>119</td>
-      <td>10</td>
-      <td>3187427022</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1909</td>
-      <td>1495068946860</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>12</td>
-      <td>10</td>
-      <td>4</td>
-      <td>114</td>
-      <td>12</td>
-      <td>4</td>
-      <td>SOLO</td>
-      <td>TOP</td>
-      <td>0.0</td>
-      <td>1029.0</td>
-      <td>...</td>
-      <td>Fiora</td>
-      <td>114</td>
-      <td>10</td>
-      <td>3187427022</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1909</td>
-      <td>1495068946860</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>13</td>
-      <td>10</td>
-      <td>5</td>
-      <td>112</td>
-      <td>4</td>
-      <td>3</td>
-      <td>SOLO</td>
-      <td>MID</td>
-      <td>0.0</td>
-      <td>3020.0</td>
-      <td>...</td>
-      <td>Viktor</td>
-      <td>112</td>
-      <td>10</td>
-      <td>3187427022</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1909</td>
-      <td>1495068946860</td>
-      <td>7.10.187.9675</td>
-    </tr>
-  </tbody>
-</table>
-<p>5 rows × 73 columns</p>
-</div>
-
-
-
-
-```python
-raw_df[raw_df.matchid==11] # stats from a specific game
-```
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id</th>
-      <th>matchid</th>
-      <th>player</th>
-      <th>championid</th>
-      <th>ss1</th>
-      <th>ss2</th>
-      <th>role</th>
-      <th>position</th>
-      <th>win</th>
-      <th>item1</th>
-      <th>...</th>
-      <th>name</th>
-      <th>id_y</th>
-      <th>id_y</th>
-      <th>gameid</th>
-      <th>platformid</th>
-      <th>queueid</th>
-      <th>seasonid</th>
-      <th>duration</th>
-      <th>creation</th>
-      <th>version</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>10</th>
-      <td>19</td>
-      <td>11</td>
-      <td>1</td>
-      <td>115</td>
-      <td>3</td>
-      <td>4</td>
-      <td>DUO_SUPPORT</td>
-      <td>BOT</td>
-      <td>0.0</td>
-      <td>3092.0</td>
-      <td>...</td>
-      <td>Ziggs</td>
-      <td>115</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>20</td>
-      <td>11</td>
-      <td>2</td>
-      <td>69</td>
-      <td>4</td>
-      <td>7</td>
-      <td>DUO_CARRY</td>
-      <td>BOT</td>
-      <td>0.0</td>
-      <td>3040.0</td>
-      <td>...</td>
-      <td>Cassiopeia</td>
-      <td>69</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>21</td>
-      <td>11</td>
-      <td>3</td>
-      <td>157</td>
-      <td>14</td>
-      <td>4</td>
-      <td>SOLO</td>
-      <td>MID</td>
-      <td>0.0</td>
-      <td>1038.0</td>
-      <td>...</td>
-      <td>Yasuo</td>
-      <td>157</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>22</td>
-      <td>11</td>
-      <td>4</td>
-      <td>4</td>
-      <td>4</td>
-      <td>12</td>
-      <td>SOLO</td>
-      <td>TOP</td>
-      <td>0.0</td>
-      <td>3157.0</td>
-      <td>...</td>
-      <td>Twisted Fate</td>
-      <td>4</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>23</td>
-      <td>11</td>
-      <td>5</td>
-      <td>28</td>
-      <td>4</td>
-      <td>11</td>
-      <td>NONE</td>
-      <td>JUNGLE</td>
-      <td>0.0</td>
-      <td>1402.0</td>
-      <td>...</td>
-      <td>Evelynn</td>
-      <td>28</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>24</td>
-      <td>11</td>
-      <td>6</td>
-      <td>51</td>
-      <td>7</td>
-      <td>4</td>
-      <td>DUO_CARRY</td>
-      <td>BOT</td>
-      <td>1.0</td>
-      <td>3046.0</td>
-      <td>...</td>
-      <td>Caitlyn</td>
-      <td>51</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>16</th>
-      <td>25</td>
-      <td>11</td>
-      <td>7</td>
-      <td>62</td>
-      <td>14</td>
-      <td>4</td>
-      <td>SOLO</td>
-      <td>TOP</td>
-      <td>1.0</td>
-      <td>1055.0</td>
-      <td>...</td>
-      <td>Wukong</td>
-      <td>62</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>17</th>
-      <td>26</td>
-      <td>11</td>
-      <td>8</td>
-      <td>134</td>
-      <td>4</td>
-      <td>1</td>
-      <td>SOLO</td>
-      <td>MID</td>
-      <td>1.0</td>
-      <td>3165.0</td>
-      <td>...</td>
-      <td>Syndra</td>
-      <td>134</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>18</th>
-      <td>27</td>
-      <td>11</td>
-      <td>9</td>
-      <td>43</td>
-      <td>14</td>
-      <td>4</td>
-      <td>DUO_SUPPORT</td>
-      <td>BOT</td>
-      <td>1.0</td>
-      <td>3092.0</td>
-      <td>...</td>
-      <td>Karma</td>
-      <td>43</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-    <tr>
-      <th>19</th>
-      <td>28</td>
-      <td>11</td>
-      <td>10</td>
-      <td>19</td>
-      <td>4</td>
-      <td>11</td>
-      <td>NONE</td>
-      <td>JUNGLE</td>
-      <td>1.0</td>
-      <td>3748.0</td>
-      <td>...</td>
-      <td>Warwick</td>
-      <td>19</td>
-      <td>11</td>
-      <td>3187425281</td>
-      <td>EUW1</td>
-      <td>420</td>
-      <td>8</td>
-      <td>1693</td>
-      <td>1495066760778</td>
-      <td>7.10.187.9675</td>
-    </tr>
-  </tbody>
-</table>
-<p>10 rows × 73 columns</p>
-</div>
-
-
-
-As we can see above, we can actually zero down on statistics for individual games. Based on the "gameid" and "platformid" we can actually go onto the League of Legends Match History website and view these games there. Below is the link related to the "matchid" equal to 11, which is shown above:
-
-https://matchhistory.na.leagueoflegends.com/en/#match-details/EUW1/3187425281?tab=overview
-
-### Data Scrubbing
-
-
-```python
-#Given that 2 players typical play in the bottom position (carry and support) we needed to tweak our role column so that it reflects all five players on each team
-def final_position(row):
-    if row['role'] in ('DUO_SUPPORT', 'DUO_CARRY'):
-        return row['role']
-    else:
-        return row['position']
-
-raw_df['adjposition'] = raw_df.apply(final_position, axis = 1) 
-
-raw_df['team'] = raw_df['player'].apply(lambda x: '1' if x <= 5 else '2')
-raw_df['team_role'] = raw_df['team'] + ' - ' + raw_df['adjposition']
-
-# remove matchids where multiple players picked the same role (like 2 TOP role on the same team) there should be 1 player per role
-# also removed games where the 2 bot roles (carry and support) were not specified
-remove_index = []
-for i in ('1 - MID', '1 - TOP', '1 - DUO_SUPPORT', '1 - DUO_CARRY', '1 - JUNGLE', '2 - MID', '2 - TOP', '2 - DUO_SUPPORT', '2 - DUO_CARRY', '2 - JUNGLE'):
-    df_remove = raw_df[raw_df['team_role'] == i].groupby('matchid').agg({'team_role':'count'})
-    remove_index.extend(df_remove[df_remove['team_role']!=1].index.values)
-remove_index.extend(raw_df[raw_df['adjposition'] == 'BOT']['matchid'].unique())
-remove_index = list(set(remove_index))
-
-raw_df = raw_df[~raw_df['matchid'].isin(remove_index)]
-```
-
-
-```python
-raw_df.info()
-```
-
-    <class 'pandas.core.frame.DataFrame'>
-    Int64Index: 1486362 entries, 0 to 1834519
-    Data columns (total 76 columns):
-    id                        1486362 non-null int64
-    matchid                   1486362 non-null int64
-    player                    1486362 non-null int64
-    championid                1486362 non-null int64
-    ss1                       1486362 non-null int64
-    ss2                       1486362 non-null int64
-    role                      1486362 non-null object
-    position                  1486362 non-null object
-    win                       1486359 non-null float64
-    item1                     1486359 non-null float64
-    item2                     1486359 non-null float64
-    item3                     1486359 non-null float64
-    item4                     1486359 non-null float64
-    item5                     1486359 non-null float64
-    item6                     1486359 non-null float64
-    trinket                   1486359 non-null float64
-    kills                     1486359 non-null float64
-    deaths                    1486359 non-null float64
-    assists                   1486359 non-null float64
-    largestkillingspree       1486359 non-null float64
-    largestmultikill          1486359 non-null float64
-    killingsprees             1486359 non-null float64
-    longesttimespentliving    1486359 non-null float64
-    doublekills               1486359 non-null float64
-    triplekills               1486359 non-null float64
-    quadrakills               1486359 non-null float64
-    pentakills                1486359 non-null float64
-    legendarykills            1486359 non-null float64
-    totdmgdealt               1486359 non-null float64
-    magicdmgdealt             1486359 non-null float64
-    physicaldmgdealt          1486359 non-null float64
-    truedmgdealt              1486359 non-null float64
-    largestcrit               1486359 non-null float64
-    totdmgtochamp             1486359 non-null float64
-    magicdmgtochamp           1486359 non-null float64
-    physdmgtochamp            1486359 non-null float64
-    truedmgtochamp            1486359 non-null float64
-    totheal                   1486359 non-null float64
-    totunitshealed            1486359 non-null float64
-    dmgselfmit                1486359 non-null float64
-    dmgtoobj                  1486359 non-null float64
-    dmgtoturrets              1486359 non-null float64
-    visionscore               1486359 non-null float64
-    timecc                    1486359 non-null float64
-    totdmgtaken               1486359 non-null float64
-    magicdmgtaken             1486359 non-null float64
-    physdmgtaken              1486359 non-null float64
-    truedmgtaken              1486359 non-null float64
-    goldearned                1486359 non-null float64
-    goldspent                 1486359 non-null float64
-    turretkills               1486359 non-null float64
-    inhibkills                1486359 non-null float64
-    totminionskilled          1486359 non-null float64
-    neutralminionskilled      1486359 non-null float64
-    ownjunglekills            1486359 non-null float64
-    enemyjunglekills          1486359 non-null float64
-    totcctimedealt            1486359 non-null float64
-    champlvl                  1486359 non-null float64
-    pinksbought               1486359 non-null float64
-    wardsbought               1486359 non-null object
-    wardsplaced               1486359 non-null float64
-    wardskilled               1486359 non-null float64
-    firstblood                1486359 non-null float64
-    name                      1486362 non-null object
-    id_y                      1486362 non-null int64
-    id_y                      1486362 non-null int64
-    gameid                    1486362 non-null int64
-    platformid                1486362 non-null object
-    queueid                   1486362 non-null int64
-    seasonid                  1486362 non-null int64
-    duration                  1486362 non-null int64
-    creation                  1486362 non-null int64
-    version                   1486362 non-null object
-    adjposition               1486362 non-null object
-    team                      1486362 non-null object
-    team_role                 1486362 non-null object
-    dtypes: float64(54), int64(13), object(9)
-    memory usage: 873.2+ MB
-    
-
-
-```python
-raw_df.describe()
-```
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id</th>
-      <th>matchid</th>
-      <th>player</th>
-      <th>championid</th>
-      <th>ss1</th>
-      <th>ss2</th>
-      <th>win</th>
-      <th>item1</th>
-      <th>item2</th>
-      <th>item3</th>
-      <th>...</th>
-      <th>wardsplaced</th>
-      <th>wardskilled</th>
-      <th>firstblood</th>
-      <th>id_y</th>
-      <th>id_y</th>
-      <th>gameid</th>
-      <th>queueid</th>
-      <th>seasonid</th>
-      <th>duration</th>
-      <th>creation</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>count</th>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1486359.0</td>
-      <td>1.486359e+06</td>
-      <td>1.486359e+06</td>
-      <td>1.486359e+06</td>
-      <td>...</td>
-      <td>1.486359e+06</td>
-      <td>1.486359e+06</td>
-      <td>1.486359e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-      <td>1.486362e+06</td>
-    </tr>
-    <tr>
-      <th>mean</th>
-      <td>9.378890e+05</td>
-      <td>9.418466e+04</td>
-      <td>5.499989e+00</td>
-      <td>1.150869e+02</td>
-      <td>6.544213e+00</td>
-      <td>7.248357e+00</td>
-      <td>0.5</td>
-      <td>2.462399e+03</td>
-      <td>2.756524e+03</td>
-      <td>2.734424e+03</td>
-      <td>...</td>
-      <td>1.200909e+01</td>
-      <td>1.906831e+00</td>
-      <td>9.999939e-02</td>
-      <td>1.150869e+02</td>
-      <td>9.418466e+04</td>
-      <td>3.095622e+09</td>
-      <td>4.073119e+02</td>
-      <td>7.860727e+00</td>
-      <td>1.887524e+03</td>
-      <td>1.491337e+12</td>
-    </tr>
-    <tr>
-      <th>std</th>
-      <td>5.327801e+05</td>
-      <td>5.358717e+04</td>
-      <td>2.872284e+00</td>
-      <td>1.153687e+02</td>
-      <td>3.971506e+00</td>
-      <td>4.252550e+00</td>
-      <td>0.5</td>
-      <td>9.295989e+02</td>
-      <td>7.685986e+02</td>
-      <td>8.056573e+02</td>
-      <td>...</td>
-      <td>7.412150e+00</td>
-      <td>2.283670e+00</td>
-      <td>2.999993e-01</td>
-      <td>1.153687e+02</td>
-      <td>5.358717e+04</td>
-      <td>3.168420e+08</td>
-      <td>7.421171e+01</td>
-      <td>6.744396e-01</td>
-      <td>4.298470e+02</td>
-      <td>1.305169e+10</td>
-    </tr>
-    <tr>
-      <th>min</th>
-      <td>9.000000e+00</td>
-      <td>1.000000e+01</td>
-      <td>1.000000e+00</td>
-      <td>1.000000e+00</td>
-      <td>1.000000e+00</td>
-      <td>1.000000e+00</td>
-      <td>0.0</td>
-      <td>0.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>...</td>
-      <td>0.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>1.000000e+00</td>
-      <td>1.000000e+01</td>
-      <td>4.576003e+08</td>
-      <td>4.000000e+00</td>
-      <td>3.000000e+00</td>
-      <td>9.010000e+02</td>
-      <td>1.400522e+12</td>
-    </tr>
-    <tr>
-      <th>25%</th>
-      <td>4.783432e+05</td>
-      <td>4.796700e+04</td>
-      <td>3.000000e+00</td>
-      <td>4.000000e+01</td>
-      <td>4.000000e+00</td>
-      <td>4.000000e+00</td>
-      <td>0.0</td>
-      <td>1.409000e+03</td>
-      <td>3.006000e+03</td>
-      <td>3.006000e+03</td>
-      <td>...</td>
-      <td>7.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>4.000000e+01</td>
-      <td>4.796700e+04</td>
-      <td>3.164320e+09</td>
-      <td>4.200000e+02</td>
-      <td>8.000000e+00</td>
-      <td>1.581000e+03</td>
-      <td>1.493558e+12</td>
-    </tr>
-    <tr>
-      <th>50%</th>
-      <td>9.300855e+05</td>
-      <td>9.325000e+04</td>
-      <td>5.000000e+00</td>
-      <td>7.900000e+01</td>
-      <td>4.000000e+00</td>
-      <td>4.000000e+00</td>
-      <td>0.0</td>
-      <td>3.047000e+03</td>
-      <td>3.078000e+03</td>
-      <td>3.068000e+03</td>
-      <td>...</td>
-      <td>1.000000e+01</td>
-      <td>1.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>7.900000e+01</td>
-      <td>9.325000e+04</td>
-      <td>3.177638e+09</td>
-      <td>4.200000e+02</td>
-      <td>8.000000e+00</td>
-      <td>1.857000e+03</td>
-      <td>1.494384e+12</td>
-    </tr>
-    <tr>
-      <th>75%</th>
-      <td>1.399404e+06</td>
-      <td>1.405800e+05</td>
-      <td>8.000000e+00</td>
-      <td>1.270000e+02</td>
-      <td>1.100000e+01</td>
-      <td>1.100000e+01</td>
-      <td>1.0</td>
-      <td>3.142000e+03</td>
-      <td>3.153000e+03</td>
-      <td>3.117000e+03</td>
-      <td>...</td>
-      <td>1.500000e+01</td>
-      <td>3.000000e+00</td>
-      <td>0.000000e+00</td>
-      <td>1.270000e+02</td>
-      <td>1.405800e+05</td>
-      <td>3.186088e+09</td>
-      <td>4.200000e+02</td>
-      <td>8.000000e+00</td>
-      <td>2.158000e+03</td>
-      <td>1.494976e+12</td>
-    </tr>
-    <tr>
-      <th>max</th>
-      <td>1.865604e+06</td>
-      <td>1.875880e+05</td>
-      <td>1.000000e+01</td>
-      <td>4.980000e+02</td>
-      <td>2.100000e+01</td>
-      <td>2.100000e+01</td>
-      <td>1.0</td>
-      <td>3.933000e+03</td>
-      <td>3.933000e+03</td>
-      <td>3.933000e+03</td>
-      <td>...</td>
-      <td>6.900000e+02</td>
-      <td>8.600000e+01</td>
-      <td>1.000000e+00</td>
-      <td>4.980000e+02</td>
-      <td>1.875880e+05</td>
-      <td>3.197657e+09</td>
-      <td>4.400000e+02</td>
-      <td>8.000000e+00</td>
-      <td>4.991000e+03</td>
-      <td>1.496909e+12</td>
-    </tr>
-  </tbody>
-</table>
-<p>8 rows × 67 columns</p>
-</div>
-
-
-
-With how many game statistics are given, I created a dataframe below that narrows down the stats I believe are most important in answering my questions above.
-
-
-```python
-df = raw_df[['id', 'matchid', 'player', 'name', 'adjposition', 'team_role', 'win', 'kills', 'deaths', 'assists', 'turretkills','totdmgtochamp', 'totheal', 'totminionskilled', 'goldspent', 'totdmgtaken', 'inhibkills', 'pinksbought', 'wardsplaced', 'duration', 'platformid', 'seasonid', 'version', 'team', 'visionscore', 'ss1', 'ss2']]
-```
-
 # Statistics that correlate with winning
 
 I first wanted to create a baseline statistic for winning. I calculated below what percent of blue teams win and what percent of red teams win. Think of these like home teams and away teams. We can see our baseline statistic that if we predicted the blue team to win every game, we would have about a 51% chance of being correct, basically a coin toss.
@@ -992,27 +103,6 @@ Taking statistics from the raw dataframe, I created multiple correlation matrix 
 
 
 ```python
-from datetime import datetime, timedelta
-print('Average length of game:', str(timedelta(seconds=round(df.duration.mean(),0))))
-```
-
-    Average length of game: 0:31:28
-    
-
-
-```python
-#stats I used for correlation matrix
-cor_df = raw_df[['win', 'kills', 'deaths', 'assists', 'largestkillingspree',
-       'largestmultikill', 'killingsprees', 'longesttimespentliving',
-       'doublekills', 'triplekills', 'quadrakills', 'pentakills',
-       'totdmgtochamp', 'dmgtoobj', 'dmgtoturrets', 'visionscore',
-       'totdmgtaken', 'enemyjunglekills', 'totminionskilled', 'wardsplaced',
-       'goldearned', 'goldspent', 'turretkills', 'inhibkills', 'totheal',
-       'duration']]
-```
-
-
-```python
 #code for creating the matrix.
 df_corr = cor_df._get_numeric_data()
 
@@ -1033,7 +123,7 @@ plt.title('Correlations - Win vs Factors (all games)')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_21_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_6_1.png)
 
 
 
@@ -1059,7 +149,7 @@ plt.title('Correlations - win vs factors (for games less than 20 mins)')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_22_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_7_1.png)
 
 
 
@@ -1086,7 +176,7 @@ plt.title('Correlations - win vs factors (for games between 20 and 30 mins)')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_23_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_8_1.png)
 
 
 
@@ -1113,7 +203,7 @@ plt.title('Correlations - win vs factors (for games between 30 and 40 mins)')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_24_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_9_1.png)
 
 
 
@@ -1139,7 +229,7 @@ plt.title('Correlations - win vs factors (for games longer than 40 mins)')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_25_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_10_1.png)
 
 
 ### Findings:
@@ -1190,7 +280,7 @@ plt.title('Ward Placement By Season')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_29_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_14_1.png)
 
 
 
@@ -1208,7 +298,7 @@ plt.title('Ward Placement By Position')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_30_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_15_1.png)
 
 
 
@@ -1225,23 +315,23 @@ for k in d.keys():
 ```
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_31_0.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_16_0.png)
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_31_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_16_1.png)
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_31_2.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_16_2.png)
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_31_3.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_16_3.png)
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_31_4.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_16_4.png)
 
 
 When comparing ward placements over the past 5 seasons, we can see that the overall average amount has increased every season. Also, you can see that the winning team has higher ward placement when compared to the losing team in the more recent seasons. When looking at ward placement by role, you can see that support players place way more wards compared to the other roles. It has become a "meta" of the game for support players to be the one to use their gold to buy wards to provide their teammates vision around the map. It is no suprise to see these trends by role. Based on these violin plots, winning teams tend to place more wards overall.
@@ -1249,106 +339,6 @@ When comparing ward placements over the past 5 seasons, we can see that the over
 # Gold spending difference between winning and losing teams
 
 During live professional League of Legends matches, one of the key statistics that can tell a large portion of how the game is going in terms of leads for a teams is a team's gold lead compared to their opoonents. Teams with a large gold lead after a certain amount of time tend to win games more. I was curious on how big of leads gold difference can be for teams that typically decides games. Below, I wanted to see what percent of the total gold spent each game goes towards both teams, and what percent of winning teams have gold advantage at the end of the game.
-
-
-```python
-df['team'] = df['team'].map({'1': 'Blue', '2':'Red'}) #helps with labeling the teams
-```
-
-
-```python
-#creating a dataframe containing the gold spent for each team
-df_gold = df[['matchid', 'player', 'team','goldspent','win']].pivot_table(index='matchid', columns=['team'], values = 'goldspent', aggfunc='sum')
-```
-
-
-```python
-df_gold.head()
-```
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th>team</th>
-      <th>Blue</th>
-      <th>Red</th>
-    </tr>
-    <tr>
-      <th>matchid</th>
-      <th></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>10</th>
-      <td>51193.0</td>
-      <td>63133.0</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>51280.0</td>
-      <td>53060.0</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>38100.0</td>
-      <td>44493.0</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>60765.0</td>
-      <td>57945.0</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>48135.0</td>
-      <td>35550.0</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-
-```python
-df_gold['Blue_Gold_Percent'] = df_gold.Blue / (df_gold.Blue + df_gold.Red)
-df_gold['Red_Gold_Percent'] = df_gold.Red / (df_gold.Blue + df_gold.Red)
-df_gold['Winner'] = np.array(df.win[df.player==1])
-df_gold['Winner'] = df_gold['Winner'].map({1.0: 'Blue', 0.0: 'Red'})
-df_gold['Red Gold Diff'] = df_gold['Red_Gold_Percent'] - df_gold['Blue_Gold_Percent']
-```
-
-
-```python
-#creating the feature for percent of total gold spent for each team, as well as the difference between the winning and losing team
-def gold_diff(row):
-    if row['Winner'] == 'Red':
-        val = row['Red_Gold_Percent'] - row['Blue_Gold_Percent']
-    else:
-        val = row['Blue_Gold_Percent'] - row['Red_Gold_Percent']
-    return val
-
-df_gold['Winner Gold Diff'] = df_gold.apply(gold_diff, axis=1)
-```
 
 
 ```python
@@ -1368,89 +358,6 @@ gold_adv_winners(df_gold, "Red")
 
 
 ```python
-def team_gold_stats(team, opp, dframe):
-    tdf = pd.DataFrame(dframe[[team +'_Gold_Percent']].copy() - 0.5)
-    tdf.columns = ['Gold_Percent']
-    tdf['Gold_Spent_Diff'] = dframe[team] - df_gold[opp]
-    tdf['win'] = dframe['Winner']
-    tdf['win'] = tdf['win'].map({opp: 0, team: 1})
-    return tdf
-
-team_gold_df = team_gold_stats("Blue", "Red", df_gold).append(team_gold_stats("Red", "Blue", df_gold))
-team_gold_df.head()
-```
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>Gold_Percent</th>
-      <th>Gold_Spent_Diff</th>
-      <th>win</th>
-    </tr>
-    <tr>
-      <th>matchid</th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>10</th>
-      <td>-0.052219</td>
-      <td>-11940.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>-0.008530</td>
-      <td>-1780.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>-0.038702</td>
-      <td>-6393.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>0.011878</td>
-      <td>2820.0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>15</th>
-      <td>0.075193</td>
-      <td>12585.0</td>
-      <td>1</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-
-```python
 plt.figure(figsize=(12,10))
 plt.scatter(x=team_gold_df['win'], y=team_gold_df['Gold_Percent'], alpha = 0.2)
 plt.title('Gold Advantage/Disadvantage of Winning and Losing Team')
@@ -1466,7 +373,7 @@ plt.xlabel('0 = Losers & 1 = Winners')
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_42_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_21_1.png)
 
 
 Things I learned going through the gold difference analysis:
@@ -1492,135 +399,6 @@ There are some objectives, including turrets and inhibitors, that teams can orga
 5) First baron (neutral objective that gives the team and their minions a unique bonus stat for a limited time)
 
 I wanted to analyze how important getting some of these objectives first are in achieving victory.
-
-
-```python
-teamstats[teamstats.matchid == 11]
-```
-
-
-
-
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>matchid</th>
-      <th>teamid</th>
-      <th>firstblood</th>
-      <th>firsttower</th>
-      <th>firstinhib</th>
-      <th>firstbaron</th>
-      <th>firstdragon</th>
-      <th>firstharry</th>
-      <th>towerkills</th>
-      <th>inhibkills</th>
-      <th>baronkills</th>
-      <th>dragonkills</th>
-      <th>harrykills</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>2</th>
-      <td>11</td>
-      <td>100</td>
-      <td>1</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>2</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>11</td>
-      <td>200</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>10</td>
-      <td>3</td>
-      <td>0</td>
-      <td>2</td>
-      <td>0</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-
-```python
-#cleaning up our dataframe for further analysis
-def teamstat_team_cleanup(dframe, team, opp, teamid):
-    matchid_lst = list(df.matchid.unique())
-    tdf = dframe[dframe['teamid'] == teamid]
-    tdf = tdf.loc[tdf['matchid'].isin(matchid_lst)]
-    tdf.set_index('matchid', inplace=True)
-    tdf['win'] = df_gold['Winner'].map({opp: 0, team: 1})
-    return tdf
-
-teamstats_wins = teamstat_team_cleanup(teamstats, "Blue", "Red", 100).append(teamstat_team_cleanup(teamstats, "Red", "Blue", 200))
-```
-
-
-```python
-#given dragon and baron are neutral objectives, some games might not have these objectives achieved
-def baron_drag_teamstates(dframe, team1, team2, team1id):
-    tdf = teamstat_team_cleanup(dframe, team1, team2, team1id)[['baronkills','dragonkills']]
-    tdf.columns = [team1+'_B_Kills',team1+'_D_Kills']
-    return tdf
-```
-
-
-```python
-b_d_df = baron_drag_teamstates(teamstats, "Blue", "Red", 100)
-b_d_df = b_d_df.join(baron_drag_teamstates(teamstats, "Red", "Blue", 200))
-b_d_df['B_Kills'] = b_d_df['Blue_B_Kills'] + b_d_df['Red_B_Kills']
-b_d_df['D_Kills'] = b_d_df['Blue_D_Kills'] + b_d_df['Red_D_Kills']
-b_d_df['win'] = df_gold['Winner']
-```
-
-
-```python
-#returns percent of teams that win the game if they get objectives first
-def firsts_win_percent(dframe, b_d, team, teamid):
-    team_wins = int(len(dframe[(dframe.win == 1) & (dframe.teamid == teamid)]))
-    b_wins = int(len(b_d[(b_d.B_Kills > 0) & (b_d.win == team)])) 
-    d_wins = int(len(b_d[(b_d.D_Kills > 0) & (b_d.win == team)]))
-    denom_list = [team_wins, team_wins, team_wins, b_wins, d_wins]
-    obj_list = ['blood', 'tower', 'inhib', 'baron', 'dragon']
-    obj_results = []
-    count = 0
-    for objective in obj_list:
-        obj_results.append(int(len(dframe[(dframe['first'+objective] == 1) & (dframe.win == 1) & (dframe.teamid == teamid)]))) 
-        print("Percent of", team,"teams that get first", objective, "that win the game:", round(int(obj_results[count])/denom_list[count]*100,2),"%")
-        count+=1
-```
 
 
 ```python
@@ -1726,31 +504,6 @@ print(df_win_rate.tail(5))
 
 
 ```python
-df_match = df.sort_values(['matchid', 'adjposition'], ascending = [1,1])
-df_match['Shift Up'] = df_match['name'].shift()
-df_match['Shift Down'] = df_match['name'].shift(-1)
-
-#gets matchups for each champ in each role
-def get_matchup(x):
-    if x['player'] <= 5:
-        if x['name'] < x['Shift Down']:
-            name_return = x['name'] + ' vs ' + x['Shift Down']
-        else:
-            name_return = x['Shift Down'] + ' vs ' + x['name']
-    else:
-        if x['name'] < x['Shift Up']:
-            name_return = x['name'] + ' vs ' + x['Shift Up']
-        else:
-            name_return = x['Shift Up'] + ' vs ' + x['name']
-    return name_return
-
-df_match['match up'] = df_match.apply(get_matchup, axis = 1)
-df_match['win_adj'] = df_match.apply(lambda x: x['win'] if x['name'] == x['match up'].split(' vs ')[0] else 0, axis = 1)
-
-```
-
-
-```python
 df_matchup = df_match.groupby(['adjposition', 'match up']).agg({'win_adj': 'sum', 'match up': 'count'})
 df_matchup.columns = ['win matches', 'total matches']
 df_matchup['total matches'] = df_matchup['total matches'] / 2
@@ -1815,18 +568,6 @@ for i in df_matchup['adjposition'].unique():
 
 
 ```python
-def get_best_counter(champion, role):
-    df_matchup_temp = df_matchup[(df_matchup['match up'].str.contains(champion)) & (df_matchup['adjposition'] == role)]
-    df_matchup_temp['champion'] = df_matchup_temp['match up'].apply(lambda x: x.split(' vs ')[0] if x.split(' vs ')[1] == champion else x.split(' vs ')[1])
-    df_matchup_temp['advantage'] = df_matchup_temp.apply(lambda x: x['score']*-1 if x['match up'].split(' vs ')[0] == champion else x['score'], axis = 1)
-    df_matchup_temp = df_matchup_temp[df_matchup_temp['advantage']>0].sort_values('advantage', ascending = False)
-    print('Best counter for {} - {}:'.format(role, champion))
-    print(df_matchup_temp[['champion', 'advantage']])
-    return
-```
-
-
-```python
 champion = 'Riven'
 role = 'TOP'
 get_best_counter(champion, role)
@@ -1853,62 +594,6 @@ get_best_counter(champion, role)
 ### Bottom lane specific
 
 The bottom lane is unique compared to other lanes in which there are two champions per team, the carry and the support. Below is the same analysis above, but for all bottom lane carries and support combinations.
-
-
-```python
-df_bot = df.sort_values(['matchid', 'adjposition'], ascending = [1,1])
-df_bot = df_bot[(df_bot['team_role'] == '1 - DUO_CARRY') | (df_bot['team_role'] == '2 - DUO_CARRY') |(df_bot['team_role'] == '1 - DUO_SUPPORT') |(df_bot['team_role'] == '2 - DUO_SUPPORT') ]
-```
-
-
-```python
-df_bot.reset_index(inplace=True)
-```
-
-
-```python
-df_bot['shiftdown2'] = df_bot['name'].shift(-2)
-df_bot['shiftup2'] = df_bot['name'].shift(2)
-```
-
-
-```python
-def bot_team(row):
-    if row['team_role'] == '1 - DUO_CARRY' or row['team_role'] == '2 - DUO_CARRY' :
-        val = row['name'] + ' & ' + row['shiftdown2']
-    else:
-        val = row['shiftup2'] + ' & ' + row['name']
-    return val
-
-df_bot['teammate'] = df_bot.apply(bot_team, axis = 1)
-```
-
-
-```python
-df_bot['shiftdown1'] = df_bot['teammate'].shift(-1)
-df_bot['shiftup1'] = df_bot['teammate'].shift(1)
-```
-
-
-```python
-def bot_matchup(row):
-    if row['team_role'] == '1 - DUO_CARRY':
-        val = row['teammate'] + ' vs ' + row['shiftdown1']
-    elif row['team_role'] == '2 - DUO_CARRY':
-        val = row['shiftup1'] + ' vs ' + row['teammate']
-    elif row['team_role'] == '1 - DUO_SUPPORT':
-        val = row['teammate'] + ' vs ' + row['shiftup1']
-    else:
-        val = row['shiftup1'] + ' vs ' + row['teammate']
-    return val
-
-df_bot['matchup'] = df_bot.apply(bot_matchup, axis = 1)
-```
-
-
-```python
-df_bot['win_adj'] = df_bot.apply(lambda x: x['win'] if x['teammate'] == x['matchup'].split(' vs ')[0] else 0, axis = 1)
-```
 
 
 ```python
@@ -4649,18 +3334,6 @@ print(df_bot_win_rate.tail(5))
 
 
 ```python
-def get_best_bot_counter(team):
-    df_matchup_temp = df_bot_matchup[(df_bot_matchup['matchup'].str.contains(team))]
-    df_matchup_temp['teammate'] = df_matchup_temp['matchup'].apply(lambda x: x.split(' vs ')[0] if x.split(' vs ')[1] == team else x.split(' vs ')[1])
-    df_matchup_temp['advantage'] = df_matchup_temp.apply(lambda x: x['score']*-1 if x['matchup'].split(' vs ')[0] == team else x['score'], axis = 1)
-    df_matchup_temp = df_matchup_temp[df_matchup_temp['advantage']>0].sort_values('advantage', ascending = False)
-    print('Best counter for:', team)
-    print(df_matchup_temp[['teammate', 'total matches', 'advantage']])
-    return
-```
-
-
-```python
 ADC = "Draven"
 Support = "Nami"
 get_best_bot_counter(ADC + ' & ' + Support)
@@ -4679,74 +3352,6 @@ So now I wanted to look into how we can predict the outcome of matches before th
 1) How well can we predict the outcome of games with only the champions selected for each role, and their spells selected.
 
 2) How well can we predict the outcome of games with the champions selected for each role, as well as their matchup metrics and winrates calculated for each champion in the above matchup analysis
-
-
-```python
-df_3 = df[['matchid', 'player', 'name', 'team_role', 'win', 'ss1', 'ss2','team']]
-
-df_3_ss1 = df_3.pivot(index = 'matchid', columns = 'team_role' , values = 'ss1')
-df_3_ss1 = df_3_ss1.reset_index()
-
-df_3_ss2 = df_3.pivot(index = 'matchid', columns = 'team_role' , values = 'ss2')
-df_3_ss2 = df_3_ss2.reset_index()
-
-```
-
-
-```python
-#creating the dummy columns given how most of the features are categorical
-team_roles = ['1 - DUO_CARRY', '1 - DUO_SUPPORT', '1 - JUNGLE', '1 - MID', '1 - TOP', '2 - DUO_CARRY', '2 - DUO_SUPPORT', '2 - JUNGLE', '2 - MID', '2 - TOP']
-
-def spell_dummies(df, pre):
-    ss_df = pd.DataFrame(index = df.matchid.unique())
-    ss_df.index.name = 'matchid'
-    for role in team_roles:
-        hold = pd.get_dummies(df[role], prefix = role + pre)
-        hold.insert(loc=0, column='matchid', value=df.matchid.unique())
-        ss_df = ss_df.merge(hold, left_on = 'matchid', right_on = 'matchid', how = 'left')
-    return ss_df
-
-ss1 = spell_dummies(df_3_ss1, '_ss1')
-ss2 = spell_dummies(df_3_ss2, '_ss2')
-
-ss_df_1 = ss1.merge(ss2, left_on = 'matchid', right_on = 'matchid', how = 'left' )
-```
-
-
-```python
-df_3 = df[['matchid', 'player', 'name', 'team_role', 'win', 'ss1', 'ss2', 'team']]
-
-df_3 = df_3.pivot(index = 'matchid', columns = 'team_role', values = 'name')
-df_3 = df_3.reset_index()
-df_3 = df_3.merge(df[df['player'] == 1][['matchid', 'win']], left_on = 'matchid', right_on = 'matchid', how = 'left')
-df_3 = df_3.merge(ss_df_1, left_on = 'matchid', right_on = 'matchid', how = 'left' )
-df_3 = df_3[df_3.columns.difference(['matchid'])]
-df_3 = df_3.rename(columns = {'win': 'T1 win'})
-
-```
-
-
-```python
-from sklearn import preprocessing
-le = preprocessing.LabelEncoder()
-from sklearn.model_selection import train_test_split
-
-# remove missing data
-df_3 = df_3.dropna()
-
-y = df_3['T1 win']
-X = df_3[df_3.columns.difference(['T1 win'])]
-
-# label string to numeric
-le_t = X.apply(le.fit)
-X_t_1 = X.apply(le.fit_transform)
-
-enc = preprocessing.OneHotEncoder()
-enc_t = enc.fit(X_t_1)
-X_t_2 = enc_t.transform(X_t_1)
-
-X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(X_t_2, y, random_state=0)
-```
 
 
 ```python
@@ -4785,24 +3390,6 @@ Features added:
 4) champion performance score 
 
 5) champion winrate in matchup 
-
-
-```python
-from sklearn.preprocessing import StandardScaler
-
-#df_6 = df_6.dropna()
-df_6 = df_6.fillna(df_6.mean())
-X = df_6[df_6.columns.difference(['Unnamed: 0','70'])]
-y = df_6['70']    
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-
-Scaler = StandardScaler()
-Scaler.fit(X_train)
-X_train = Scaler.transform(X_train)
-X_test = Scaler.transform(X_test)
-        
-```
 
 
 ```python
@@ -4946,11 +3533,11 @@ plt.show()
     
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_88_1.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_47_1.png)
 
 
 
-![png](League%20of%20Legends%20Analysis%202_files/League%20of%20Legends%20Analysis%202_88_2.png)
+![png](LeagueofLegendsAnalysisREADME_files/LeagueofLegendsAnalysisREADME_47_2.png)
 
 
 # Summary
